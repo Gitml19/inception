@@ -1,0 +1,124 @@
+FROM debian:bullseye = car d'apres le sujet on doit construire nous meme l'image, sinon on aurait choisit FROM php:8.2-fpm qui integre deja php-fpm
+FROM = instruction dockerfile, elle indique l'image de base que ton conteneur va utiliser
+tout ce que tu ecris ensuite (RUN, COPY, ...) s'ajoute sur cette base
+php:8.2-fpm = nom de l'image officielle sur docker hub, elle contient : php version 8.2, php-fpm pour executer php avec nginx et un systeme minimal debian/alpine selon l'image
+php:8.2-fpm	= PHP sans Apache
+plusieurs tags possibles :
+	php:8.2-fpm → PHP 8.2 avec FPM seulement
+	php:8.2-apache → PHP 8.2 avec Apache intégré
+	php:8.2-cli → pour exécuter PHP en ligne de commande uniquement
+
+RUN apt-get update && apt-get install -y \
+	mariadb-client \
+	curl \
+	&& docker-php-ext-install mysqli \
+	&& apt-get clean \
+	&& rm - rf /var/lib/apt/lists/*
+RUN = instruction docker qui execute une commande dans le conteneur pendant le build
+apt = gestionnaire de paquets
+sans apt, on ne sait pas quelles versions de logiciels existent donc dans un container on le fait toujours avant un install
+apt-get update = maj la liste des paquets disponibles
+apt-get install -y mariadb-client curl = installe : 
+	mariadb-client qui contient mysql et mysqladmin et qui permet au conteneur wordpress de tester la connexion a mariadb avec la boucle while ! mysqladmin ping ...
+	curl qui permet de telecharger wordpress ou wp-cli directement depuis internet
+-y = accepte automatiquement les prompts d'installation (sinon docker s'arrete pour demander confirmation)
+docker-php-ext-install mysqli = installe l'extension php mysqli car wordpress en a besoin pour se connecter a mariadb/mysql
+cette commande compile l'extension php et la rend disponible dans php-FPM
+rm - rf /var/lib/apt/lists/* = supprime la liste des paquets qui a ete telecharger par apt-get update, pour reduire la taille de l'image docker
+
+php = installe l'interpreteur php qui execute le code de WordPress car wordpress est ecrit en php
+php-fpm = fastcgi process manager car nginx recoit la requete, il envoie le scripts php a php-fgm et php-fgm execute le code
+php-mysql = permet a php de se connecter a mariadb. sans cette extensionm wordpress ne peut pas acceder a la base de donnees
+(toutes la partie php, on aurait pas eu besoin de l'installer si on pouvait utiliser php:8.2-fpm, mais on aurait juste eu besoin de rajouter docker-php-ext-install mysqli)
+mariadb-client = installe le client CLI de mariadb, il sert a : tester la connexion a la database (DB), executer des commandes SQL et verifier que la DB est prete
+curl = outil pour faire des requetes http, souvent utiliser pour telecharger wp-cli, tester une API ou recuperer un fichier
+wget = permet de telecharger des fichiers depuis internet
+unzip = pemet de decompresser des fichiers zip car wordpress est souvent telecharger en .tar.gz ou . zip
+"\" sert a continuer la commande sur plusieurs lignes
+"&&" = dit executer la commande suivante seulement si la precedente reussit. donc si le udate echoue, le build s'arrete
+apt-get clean = supprime le cache (fichier temporaires .deb) des paquets telecharger situer /var/cache/apt/archives/ dans et reduit la taille de l'image docker
+
+RUN mkdir -p /var/www/wordpress
+mkdir = make directory (creer un dossier)
+/var/www/ car sur les systemes linux comme debian, les fichiers web sont tradionnellement placer dans /var/www/
+-p = creer les dossiers parents s'ils n'existent pas donc si /var/www/ n'existe pas encore, la commande va le creer
+
+WORKDIR /var/www/wordpress = sert a definir le dossier de travail par defaut pour toutes les commandes suivantes dans l'image docker (a partir de mtn, ttes les commandes seront executer dans ce dossier)
+donc c'et comme si on faisait cd /var/www/wordpress a chaque fois.
+par ex :
+RUN cd /var/www/wordpress && wget https://wordpress.org/latest.tar.gz
+RUN cd /var/www/wordpress && tar -xvf latest.tar.g
+equivaut a :
+RUN wget https://wordpress.org/latest.tar.gz
+RUN tar -xvf latest.tar.gz
+
+#telecharge wordpress
+RUN wget https://wordpress.org/latest.tar.gz \
+	&& tar -xvf latest.tar.gz --strip-components=1 \
+	&& rm latest.tar.gz
+wget = telecharge le fichier depuis une URL et le sauvegade avec le meme nom (latest.tar.gz par défaut)
+tar -xvf latest.tar.gz --strip-components=1 
+-x = extraire
+-v = verbose (affiche les fichiers)
+-f = fichier a extraire
+--strip-components=1 = supprime le premir dossier du tar (dans ce cas wordpress/), donc tous les fichiers sont directement extraits dans /var/www/wordpress
+rm latest.tar.gz = supprime l'archive pour ne pas alourdir l'image
+
+2eme version pour telecharger wordpress
+RUN curl -O https://wordpress.org/latest.tar.gz \
+	&& tar -xzf latest.tar.gz \
+	&& mv wordpress/* . \
+	&& rm -rf wordpress latest.tar.gz
+curl -O = telecharge le fichier et le sauvegarde sous le nom d'origine (latest.tar.gz)
+curl -O URL = telecharge le fichier et garde le nom d'origine
+curl -o fichier = telecharge le fichier et le renomme fichier
+tar -xzf latest.tar.gz
+-z = le fichier est compresser en gzip
+mv wordpress/* . = deplace tous les fichiers du dossier wordpress/ vers le dossier courant
+rm -rf wordpress latest.tar.gz = supprime l'archive et le dossier temporaire wordpress/
+rm = remove, supprime des fichiers ou dossiers
+-r = recursive, supprime tout le contenu d'un dossier, y compris les sous-dossiers
+-f = force, supprime sans demander de confirmation, meme si les fichiers sont en lecture seule
+donc si je fais, rm /tmp/test = supprime un fichier, et si test est un dossier->erreur et si le fichier est proteger->demande confirmation
+si je fais rm -r /tmp/test = supprime dossier + tous les fichiers a l'interieur et demande confirmation si certains fichiers sont proteger
+si je fais rm -rf /tmp/test = supprime dossier + contenu + sous-dossiers et pas de confirmation (non interactif)
+
+COPY conf/www.conf /etc/php/7.4/fpm/pool.d/www.conf
+COPY = copie un fichier de ton projet local (ici conf/www.conf) vers l'interieur du container
+destination : /etc/php/7.4/fpm/pool.d/www.conf = le fichier de configuration du pool php-fpm
+php-fpm gere le processus php qui execute les scripts wordpress
+un pool = un groupe de processus php avec ses parametres propres
+ex de paametres dans www.conf :
+Paramètre					Rôle
+listen = 9000				Port où PHP-FPM écoute Nginx
+user = www-data				Utilisateur qui exécute PHP
+group = www-data			Groupe associé
+pm.max_children				Nombre max de processus PHP simultanés
+pm.start_servers			Nombre de processus au démarrage
+pm.min/max_spare_servers	Gestion dynamique des processus
+on fait une copie car le fichier par defaut dans debian peut ne pas corespondre au projet
+
+COPY tools/wp_setup.sh /usr/local/bin/setup.sh
+COPY : copie un fichier depuis ton projet local vers le container
+Source : tools/wp_setup.sh → ton script d’installation WordPress
+Destination : /usr/local/bin/setup.sh → endroit standard pour les exécutables dans Linux
+
+
+mysqli = Permet connexion à MariaDB
+curl = Télécharge WordPress
+php-fpm -F = Lance PHP-FPM en foreground
+
+#installe wp-cli
+RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
+	&& chmod +x wp-cli.phar \
+	&& mv wp-cli.phar /usr/local/bin/wp
+wp-cli est un outil en ligne de commande pour wordpress
+il permet de creer la base de donnees wordpress (wp core install), gerer les utiisateurs (wp user create), installer des plugins ou themes (wp plugin install) et configurer wordpress depuis le terminal
+pratique si on veut automatiser wordpress, genre creer des utilisateurs WordPress automatiquement ou automatisr l'installation complete de wordpress avec plugin et themes
+
+COPY conf/www.conf /usr/local/etc/php-fpm.d/www.conf
+cette ligne est necessaire que si on n'utilise pas la config par defaut et qu'on prefere utiliser www.conf a la place
+www.conf contiendrait des choses comme : utilisateur (www-data), groupe, port d'ecoute (9000), parametres de performance
+FROM php:8.2-fpm contient deja un www.conf fonctionnel donc si on modifie rien, pas besoin de copier un nouveau www.conf
+
+CMD ["php-fpm", "-F"], pas necessaire ici car on l'a deja mis a la fin du setup.sh

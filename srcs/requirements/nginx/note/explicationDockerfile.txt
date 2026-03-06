@@ -1,0 +1,95 @@
+dockerfile = construit l'image nginx
+conf/default.conf = configuration du site(reverse proxy)
+
+FROM nginx:alpine
+on utilise alpine car suffisant et + leger, module simple
+en utilisant alpine, on reduit la taille (que 5mo au lieu de 133mo pour debian), accelere le build et le deploiement
+si le service est simple et leger = alpine
+si le service est complexe et depend de bcp de librairies = debian
+
+RUN rm /etc/nginx/conf.d/default.conf
+RUN = directive docker qui execute une commande dans le container au moment de la construction (build)
+rm = commande linux pour supprimer un fichier
+/etc/nginx/conf.d/default.conf = fichier de configuration par defaut fourni avec l'image nginx
+quand on construit notre propre container nginx, l'image nginx vient avec un fichier default.conf qui definit un serveur par defaut
+si on veut mettre notre propre config (par ex nginx.conf), il faut supprimer celui par defaut sinon il peut rentrer en conflit avec les server {...} et generer des erreurs nginx au demarrahge
+donc la commande supprime le serveur par defaut pour que mon nginx utilise uniquement ma config personnaliser
+
+RUN apt-get update = maj des paquets disponibles
+apt-get install -y 
+"-y" = repond "yes" automatiquement aux questions
+nginx = installe le serveur web
+openssl = installe pour generer le certificat SSL
+apt-get clean = nettoie le cache des paquets pour reduire la taille de l'image et faire plus propre
+
+RUN mkdir -p /etc/nginx/ssl
+creer le dossier, creer aussi les dossiers parents si besoin et ne renvoie pas d'erreur si le dossier existe deja
+"-p" = parents
+
+RUN openssl req -x509 -nodes \
+	-out /etc/nginx/ssl/inception.crt \
+	-keyout /etc/nginx/ssl/inception.key \
+	-subj "/C=FR/ST=IDF/L=Paris/O=42/OU=student/CN=makoon.42.fr" \
+	-days 365
+sert a generer un certificat SSL auto-signer pour que nginx puisse fonctionner en HTTPS
+Un certificat SSL/TLS est utilisé par Nginx pour sécuriser les connexions HTTPS.
+Techniquement, il y a deux façons de créer un certificat :
+1. Générer une demande de signature de certificat (CSR)
+Tu as une clé privée et tu crées un fichier .csr
+Tu l’envoies à une autorité de certification (CA) pour qu’elle signe le certificat
+Résultat : un certificat officiel signé
+2.Créer un certificat auto-signé
+Tu signes toi-même le certificat avec ta propre clé privée
+Pas reconnu par un navigateur (il affiche “connexion non sécurisée”)
+Mais suffisant pour un projet 42
+
+dans openssl, le req cree normalement une CSR , mais le -x509 dit au lieu de creer juste une demande, cree directement un certificat auto-signe au format X.509
+X.509 est le format standard pour les certicats SSL/TLS
+il contient une cle publique, une identite (CN, organisation...), date de validite, signature
+donc sans -x509, on aurait juste une demande de certificat (.csr), nginx ne pourrait pas demarrer avec ca, on aurait besoin d'une autorite externe pour signer le certificat
+
+openssl = c'est l'outil en ligne de commande fourni par openssl
+il permet de creer des cles privees, creer des certificats et gerer du chiffrement
+req = certificat request, normalement on l'utilise pour generer une CSR (certificate signing request), mais ici on l'utilise differemment grace a -x509
+-x509 = ca dit a openssl de ne pas creer une demande de certificat mais creer directement un certificat auto-signer au format X.509
+donc pas d'autorite de certification, pas de validation externe, certicat auto-signer
+-nodes = No DES (pas de chiffrement de la cle privee) cad la cle privee ne sera pas proteger par un mdp et nginx pourra demarrer automatiquement
+-out /etc/nginx/ssl/inception.crt = certicat public, c'est lui que nginx envoie aux navigateurs
+on reprend le chemin qu'on a creer juste avant avec le mkdir (ou on veut stocker le certificat public)
+-keyout /etc/nginx/ssl/inception.key = cle privee, elle doit rester secrete, nginx l'utilise pour prouver son identite
+- subj = les informations du certicat
+Champ	Signification
+C		Country
+ST		State
+L		Location
+O		Organization
+OU		Organizational Unit
+CN		Common Name(le seul truc important, le reste c'est plutot pour respecter la norme X.509 mais pas essentiel la)
+-days 365 = le certicat sera valide pendant 365 jours et apres il expire
+tout ca, permet a nginx de faire HTTPS = HTTP + chiffrement TLS
+Navigateur → demande HTTPS
+⬇
+Nginx envoie son certificat
+⬇
+Le navigateur chiffre les données avec la clé publique
+⬇
+Nginx déchiffre avec la clé privée
+
+Connexion sécurisée
+
+COPY conf/default.conf /etc/nginx/conf.d/default.conf
+COPY = une instruction dockerfile qui sert a copier des fichiers ou dossiers depuis ton ordi vers l'interieur du container
+COPY <source> <destination>
+
+EXPOSE 443 = indique a docker que le container va utiliser ce port
+ici 443 = port HTTPS standard pour nginx
+signifie que nginx dans ce container ecoute sur le port 443
+on peut pas mettre 80 car 80 = HTTP (non securiser)
+
+CMD ["nginx", "-g", "daemon off;"]
+CMD = definit la commande par defaut qui sera executer quqnd le container demarre
+"-g" = global directives, ca permet de passer des instructions directement a nginx depuis la ligne de commande, au lieu de les mettre dans un fichier de configuration(nginx.conf)
+"nginx" = le programme a lancer
+"daemon" = par defaut, nginx demarre en mode "daemon", il s'execute en arriere plan
+dans docker, le container doit avoir un process principal au permier plan, sinon docker considere que le container est terminer et le stoppe directement
+"daemon off" = desactive le mode daemon donc nginx reste au permier plan, ce qui permet a docker de garder le container en vie

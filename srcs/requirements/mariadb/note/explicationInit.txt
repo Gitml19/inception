@@ -1,0 +1,68 @@
+mariadb est un client, il sert a se connecter au serveur pour envoyer des requetes SQL
+
+#!/bin/bash = indique que le script doit etre executer avec bash
+
+service mariadb start = demarre temporairement le service mariadb, on en a besoin pour executer des commandes SQL juste apres
+
+sleep 5 = attend 5 sec pour laisser le tps a mariadb de demarrer
+sinon les commandes suivantes pourraient echouer si le serveur n'est pas encore permet
+
+mariadb -e "CREATE DATABASE IF NOT EXISTS ${MYSQL_DATABASE};"
+creation de la base de donnees si elle n'existe pas deja
+${MYSQL_DATABASE} vient de ton fichier .env.
+ex : MYSQL_DATABASE=wordpress donc ca devient CREATE DATABASE IF NOT EXISTS wordpress;
+"-e" = e comme execute, permet d'executer une commande SQL directement depuis le terminal sans entrer dans le shell interactif mariadb
+"CREATE DATABASE IF NOT EXISTS ${MYSQL_DATABASE};" est l'instruction SQL envoyer au serveur mariadb
+elle est entre guillemets car la requete contient des espaces, des mots-cles SQL et peut contenir des variables bash
+${MYSQL_DATABASE} = variable, bash va remplacer la variable avant d'envoyer la commande
+" " permet lexpansion des variables (on l'utilise ici pour le bash)
+' ' n'autorise pas l'expansion des variables (on l'utilise ici pas pour l'expansion ou pas de bash mais pour dire que c'est une string en sql)
+{} pas obligatoire mais sert a delimiter plus clairement le nom de la variable
+; a la fin pour dire que c'est la fin de la requete SQL car on peut envoyer plusieurs requetes d'un coup
+
+mariadb -e "CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'%'IDENTIFIED BY '${MYSQL_PASSWORD}';"
+creation d'un utilisateur mariadb
+{MYSQL_USER} = nom d'utilisateur
+en mariadb (comme mysql), un utilisateur est defini comme 'utilisateur'@'host', pas juste un username
+par ex 'toto'@'localhost', 'toto'@'192.168.1.10', 'toto'@'%' car '%' veut dire n'importe quelle machine
+{MYSQL_PASSWORD} = mdp
+'%' = autorise les connexions depuis n'importe quelle machine et c important d'utiliser ca car wordpress vient d'un autre conteneur
+
+mariadb -e "GRANT ALL PRIVILEGES ON ${MYSQL_DATABASE}.* TO '${MYSQL_USER}'@'%';"
+donne tous les droits a cet utilisateur sur ta base uniquement
+donc wordpress pourra creer des tables, modifier des donnees et supprimer des donnees, mais pas toucher aux autres bases
+en SQL, la synthaxe d'un grant est :
+GRANT PRIVILEGES ON database.object TO 'user'@'host';
+donc ici ${MYSQL_DATABASE}.* veut dire nom_de_la_base.tous_les_objets (toutes les tables et objets de cette base de donnees)
+
+mariadb -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';"
+securisation du root en changeant le mdp du root
+par defaut, root peut ne pas avoir de mdp dans certaines images
+ALTER USER sert a modifier un utilisateur existant
+ici l'utilsateur root qui se connecte depuis localhost uniquement
+pk on modifie car quand mariadb demarre pour la 1ere fois, le user root existe deja et parfois il a pas de mdp donc on force a mettre un mdp
+
+mariadb -e "FLUSH PRIVILEGES;"
+applique les changements en rechargeant les permissions immediatement
+c'est important de faire ca, si on utilise INSERT ou UPDATE, mais ici avec CREATE USER, GRANT et ALTER USER, mariadb met automatiquement a jour les privileges donc c'est plutot par securite
+
+mysqladmin -u root -p${MYSQL_ROOT_PASSWORD} shutdown
+arrete mariadb proprement
+psk on a demarrer avec "service mariadb start" juste pour faire la config
+et mtn on veut relancer proprement en mode conteneur
+mysqladmin est un outil en ligne de commande fourni avec mariadb
+il sert a arreter le serveur, verifier son statut, changer des parametres, creer/supprimer des bases
+-u root = je me connecte en tant qu'utilisateur root donc administrateur de la base car seul root a le droit de faire shutdown
+"-u" = user (utilisateur)
+"-p" = password et apres le p il ne faut pas d'espace car on veut le mode non interactif cad on donne le mdp directement -p${MYSQL_ROOT_PASSWORD}
+car si on met un espace, le terminal affichera une demande de mdp mais dans un conteneur docker, ca ne marche pas, car il n'y a pas d'utilisateur pour taper le mdp
+
+exec mysqld_safe
+lance mariadb en process principal du conteneur
+exec car remplace le process bash, permet a docker de suivre correctement le process et permet un arret propre avec docker stop
+exec remplace le processus bash actuel par le processus qu'on lance, ne cree pas de processus enfant
+toute commande apres exec ne sera pas executer car shell est remplacer
+le conteneur docker (ou script) ne tourne lus avec bash, mais avec mariadb en tant que PID 1.
+PID 1 est le processus principal du conteneur, si le processus meurt, le conteneur s'arrete et docker gere le signal SIGTERM pour l'arreter proprement
+sans exec, le conteneur pourrait mal gerer les signaux car ca cree un process enfant
+
