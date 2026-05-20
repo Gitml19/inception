@@ -1,62 +1,59 @@
-echo "Waiting for MariaDB"
+#!/bin/bash
 
-while ! mysqladmin ping -h mariadb -u${MYSQL_USER} -p${MYSQL_PASSWORD} --silent; do
-	sleep 2
+set -e
+
+WP_PATH="/var/www/wordpress"
+
+mkdir -p "$WP_PATH"
+chown -R www-data:www-data "$WP_PATH"
+
+cd /tmp
+
+# Télécharge WordPress seulement si pas déjà installé
+if [ ! -f "$WP_PATH/wp-config.php" ]; then
+  wp core download --allow-root --path=$WP_PATH
+  wp config create --allow-root \
+    --dbname=$MYSQL_DATABASE \
+    --dbuser=$MYSQL_USER \
+    --dbpass=$MYSQL_PASSWORD \
+    --dbhost="mariadb:3306" \
+    --path=$WP_PATH
+fi
+
+echo "Waiting for MariaDB..."
+
+until mysqladmin ping -h mariadb --silent; do
+    sleep 2
 done
 
-echo "MariaDB is ready"
+echo "MariaDB is ready!"
 
-wp config create \
-	--dbname=$MYSQL_DATABASE \
-	--dbuser=$MYSQL_USER \
-	--dbpass=$MYSQL_PASSWORD \
-	--dbhost=mariadb:3306 \
-	--allow-root
+# verifie si WP est installer en DB
+if ! wp core is-installed --path="$WP_PATH" --allow-root 2>/dev/null; then
 
-wp core install \
-	--url=$DOMAIN_NAME \
-	--title="Inception" \
-	--admin_user=$WP_ADMIN_USER \
-	--admin_password=$WP_ADMIN_PASSWORD \
-	--admin_email=$WP_ADMIN_EMAIL \
-	--skip-email \
-	--allow-root
+  echo "Installing WordPress (WP-CLI)..."
 
-php-fpm -F
+  wp core install \
+      --path="$WP_PATH" \
+      --url="https://${DOMAIN_NAME}" \
+      --title="${WP_TITLE}" \
+      --admin_user="${WP_ADMIN_USER}" \
+      --admin_password="${WP_ADMIN_PASSWORD}" \
+      --admin_email="${WP_ADMIN_EMAIL}" \
+      --skip-email \
+      --allow-root
+    
+  echo "Creating secondary user..."
 
-#sleep 10
-
-#wp config create \
-#	--dbname=$MYSQL_DATABASE \
-#	--dbuser=$MYSQL_USER \
-#	--dbpass=$MYSQL_PASSWORD \
-#	--dbhost=mariadb:3306 \
-#	--allow-root
-
-#wp core install \
-#	--url=$DOMAIN_NAME \
-#	--title="Inception" \
-#	--admin_user=$WP_ADMIN_USER \
-#	--admin_password=$WP_ADMIN_PASSWORD \
-#	--admin_email=$WP_ADMIN_EMAIL \
-#	--skip-email \
-#	--allow-root
-
-#php-fpm -F
-
-sleep 10
-
-cd /var/www/wordpress
-
-if [ ! -f wp-config.php ]; then
-
-	cp wp-config-sample.php wp-config.php
-
-	sed -i "s/database_name_here/$MYSQL_DATABASE/g" wp-config.php
-	sed -i "s/username_here/$MYSQL_USER/g" wp-config.php
-	sed -i "s/password_here/$MYSQL_PASSWORD/g" wp-config.php
-	sed -i "s/localhost/$MYSQL_HOST/g" wp-config.php
+  wp user create \
+      "${WP_USER}" "${WP_USER_EMAIL}" \
+      --role=author \
+      --user_pass="${WP_USER_PASSWORD}" \
+      --path="$WP_PATH" \
+      --allow-root
 
 fi
 
-php-fpm7.4 -F
+echo "Starting php-fpm..."
+
+exec php-fpm7.4 -F

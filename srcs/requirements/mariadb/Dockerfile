@@ -1,14 +1,17 @@
 FROM debian:bookworm
 
-RUN apt update && apt upgrade -y && \
-	apt install mariadb-server -y && \
-	rm -rf /var/lib/apt/list/*
+RUN apt-get update && apt-get install -y \
+	mariadb-server \
+	&& rm -rf /var/lib/apt/lists/* \
+    && rm -rf /var/lib/mysql/*
 
-COPY conf/my.cnf /etc/mysql/my.conf
-COPY tools/init.sh /init.sh
+# pour forcer a 0.0.0.0 au lieu de localhost
+COPY conf/50-server.cnf /etc/mysql/mariadb.conf.d/50-server.cnf
 
-RUN chmod +x /init.sh
+COPY tools/init.sh /usr/local/bin/init.sh
+
+RUN chmod +x /usr/local/bin/init.sh
 
 EXPOSE 3306
 
-CMD["/init.sh"]
+ENTRYPOINT ["/usr/local/bin/init.sh"]

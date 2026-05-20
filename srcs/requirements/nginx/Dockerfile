@@ -1,33 +1,33 @@
-#FROM nginx:alpine
-
-#RUN rm /etc/nginx/conf.d/default.conf
-
-#COPY conf/default.cong=f /etc/nginx/conf.d/
-
-#EXPOSE 80
-
-#CMD ["nginx", "-g", "daemon off;"]
-
-# OU 
 FROM debian:bullseye
 
+# nginx = serveur web qui va recevoir les requetes HTTP/HTTPS
+# openssl = sert a generer un certificat SSL
 RUN apt-get update && apt-get install -y \
 	nginx \
 	openssl \
-	&& apt-get clean
+	&& rm -rf /var/lib/apt/lists/*
 
-#creer le dossier SSL
+# pour creer le dossier qui permet de stocker le certificat SSL et la clef pour une connexion securisee
 RUN mkdir -p /etc/nginx/ssl
 
+# commande req pour creer des certificats auto-signer
+# -x509 pour preciser le type du certificat
+# option -nodes = clef privee sans mot de passe
+# option -out et -keyout pour indiquer a openssl ou l'on souhaite stocker le certificat et la clef de notre SSL
+# ces 2 certificats vont demander des infos pour le certificat et avec -subj on peut les preremplir
 RUN openssl req -x509 -nodes \
-	-out /etc/nginx/ssl/inception.crt \
-	-keyout /etc/nginx/ssl/inception.key \
-	-subj "/C=FR/ST=IDF/L=Paris/O=42/OU=student/CN=makoon.42.fr" \
+	-out /etc/nginx/ssl/nginx.crt \
+	-keyout /etc/nginx/ssl/nginx.key \
+	-subj "/C=FR/ST=IDF/L=Paris/O=42/CN=${DOMAIN_NAME}" \
 	-days 365
 
 #copier la config nginx
 COPY conf/default.conf /etc/nginx/conf.d/default.conf
 
+COPY tools/init.sh /usr/local/bin/init.sh
+
+RUN chmod +x /usr/local/bin/init.sh
+
 EXPOSE 443
 
-CMD ["nginx", "-g", "daemon off;"]
+ENTRYPOINT ["/usr/local/bin/init.sh"]
