@@ -4,19 +4,18 @@ FROM debian:bookworm
 # php-curl : permet a php de faire des requetes HTTP, telecharges des ressources
 # php-gd : gestion des images
 # php-mbstring : pour les caracteres speciaux
-# php7.4-mysql : connexion a mariadb
-# php7.4-json : manipulation json
-# php7.4-curl : requetes HTTP depuis PHP
+# php8.2-mysql : connexion a mariadb
+# php8.2-json : manipulation json
+# php8.2-curl : requetes HTTP depuis PHP
 # curl ou wget : pour telecharger des fichiers
 # netcat : pour tester les connexions reseau
 # mariadb-client : permet a PHP ou scripts de parler a mariadb
-# peut etre qu'il faut changer en 8.2 car bookworm
 RUN apt-get update && apt-get install -y \
-    php7.4-fpm \
-    php7.4-mysql \
-    # php7.4-json \
-    php7.4-curl \
-    php7.4-mbstring \
+    php8.2-fpm \
+    php8.2-mysql \
+    # php8.2-json \
+    php8.2-curl \
+    php8.2-mbstring \
     wget \
     curl \
     tar \
@@ -25,7 +24,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # modifie www.conf pour que php-fpm ecoute sur le reseau docker donc php ecoute sur 0.0.0.0:9000 au lieu de 127.0.0.1:9000 car nginx est dans un autre conteneur
-COPY conf/www.conf /etc/php/7.4/fpm/pool.d/www.conf
+COPY conf/www.conf /etc/php/8.2/fpm/pool.d/www.conf
 
 # copie le script qui permet de telecharger wordpress, config wp-config.php, connecter mariadb et lancer php-fpm
 COPY tools/setup.sh /usr/local/bin/setup.sh
