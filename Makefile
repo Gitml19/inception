@@ -39,20 +39,12 @@ status:
 logs:
 	$(COMPOSE) logs -f
 
-# supprime conteneurs, volumes et reseaux
-# avant de clean, make execute down et supprime les volumes docker
-# docker volume ls -q = liste uniquement les ID/noms des volumes (mariadb_data, wordpress_data)
-# $$ car dans un makefile, $ est reserver aux variables Make donc pour envoyer un vrai $ au shell, il faut ecrire $$
-# 2>/dev/null = cache les erreurs
-# || true = empeche make d'echouer si aucune ressource existe
-
-# clean: down
+# arrete et supprime conteneurs et reseaux (grace a down) et  volumes (avec -v) mais garde les images et les dossiers physiques qui contiennent les donnees
+# --remove-orphans : supprime les conteneurs orphelins, services supprimer du fichier compose
 clean:
 	$(COMPOSE) down -v --remove-orphans
-# 	docker volume rm $$(docker volume ls -q) 2>/dev/null || true
-# 	docker network rm $$(docker network ls -q) 2>/dev/null || true
 
-# docker system prune -af = supprime les images inutilisees, cache, conteneurs stoppes, reseaux inutilises
+# docker system prune -af = supprime les images inutilisees, cache, conteneurs stoppes, reseaux inutilises (nettoyage complet)
 # -a : tout supprimer
 # -f = sans confirmation
 # sudo rm -rf /home/$(shell whoami)/data = supprime les dossiers locaux

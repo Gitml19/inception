@@ -1,4 +1,167 @@
+*This project has been created as part of the 42 curriculum by makoon.*
+
 # inception
+
+## Description
+
+This projects aims to introduce system administration and containerization using Docker and Docker Compose.
+
+The goal is to build a small infrastructure composed of multiple interconnected services running inside isolated Docker containers.
+Each service has its own dedicated container and configuration.
+
+The infrastructure includes :
+- An Nginx web server
+- A Wordpress website running with PHP-FPM
+- A MariaDB database
+- Persistent storage using Docker volumes
+- A dedicated Docker network for inter-container communication
+
+## Design choices
+
+### Virtual Machines vs Docker
+
+A VM virtualizes an entire operating system including its kernel, requiring significant ressources. 
+
+Docker containers share the host kernel and isolate only the application layer, making them much lighter and faster to start.
+
+For this project, Docker allows us to run three isolated services on a single VM minimal overhead.
+
+### Secrets vs Environment Variables
+
+Environment variables (via `.env`) are suitable for non-sensitive configuration like domain names or usernames.
+
+Secrets (files in `secrets/`) are used for passwords and credentials (they are never written into a Dockerfile or committed to Git, reducing the exposure in case of a repository leak).
+
+In this project, environment variables are used for simplicity.
+
+### Docker Network vs Host Network
+
+A Docker bridge network (`inception`) isolates container communication fron the host network. Only port 443 is exposed to the outside.
+With `network: host`, all container ports would be directly exposed on the host (a significant security risk forbidden by the subject).
+
+A dedicated Docker network is used in this project to ensure secure and organized communication between services.
+
+### Docker Volumes vs Bind Mount
+
+Named volumes are managed by Docker and persist independently of the container lifecycle.
+
+Bind mounts directly map a host path into a container, which is less portable and harder to manage.
+
+This project uses named volumes with a local driver pointing to `/home/makoon/data` to satisfy both the persistence and the named volume requirements.
+
+Docker volumes are used in this project to persist Wordpress and MariaDB data.
+
+
+## Instructions
+
+### Prerequisites
+
+- Docker and Docker compose installed
+- A virtual machine running Debian or similar
+- `sudo` access to edit `/etc/hosts`
+
+### Environment variables
+
+Create a `.env` file at the root of the project:
+```env
+DOMAIN_NAME=makoon.42.fr
+
+# MYSQL SETUP/mariadb
+MYSQL_USER=wpuser
+MYSQL_DATABASE=wordpress
+MYSQL_PASSWORD=wppassword
+MYSQL_ROOT_PASSWORD=rootpassword
+# MYSQL_HOST=mariadb:3306
+
+
+
+# Wordpress
+WP_ADMIN_USER=makoon_admin
+WP_ADMIN_PASSWORD=adminpass
+WP_ADMIN_EMAIL=admin@makoon.42.fr
+WP_USER=regularuser
+WP_USER_PASSWORD=userpassword
+WP_USER_EMAIL=user@makoon.42.fr
+WP_VERSION=6.5.3
+```
+
+Add domain to `/etc/hosts`:
+```bash
+sudo sh -c 'echo "127.0.0.1 makoon.42.fr" >> /etc/hosts'
+```
+
+### Build and run
+
+Start the infrastructure:
+```bash
+docker-compose up --build
+```
+
+The project must be compiled using :
+```bash
+make up
+```
+
+### Access
+
+Once all containers are running:
+- Open Wordpress website: https://makoon.42.fr and accept the SSL warning
+- Nginx listens on port 443 (HTTPS only)
+
+
+### Available commands
+
+| Command        | Description                              |
+|----------------|------------------------------------------|
+| `make`         | Build images and start all containers    |
+| `make down`    | Stop and remove containers               |
+| `make stop`    | Stop containers without removing them    |
+| `make start`   | Start stopped containers                 |
+| `make restart` | Restart all containers                   |
+| `make status`  | Show running containers                  |
+| `make logs`    | Follow container logs                    |
+| `make clean`   | Remove containers and volumes            |
+| `make fclean`  | Full cleanup including persistent data   |
+| `make re`      | Full rebuild from scratch                |
+
+
+
+<!-- ### Stop the infrastructure
+
+```bash
+docker-compose down
+```
+To remove volumes :
+
+```bash
+docker-compose down -v
+``` -->
+
+## Ressources
+
+Version stable de Deian : https://www.debian.org/releases/index.fr.html
+https://tuto.grademe.fr/inception/
+https://www.atlantic.net/dedicated-server-hosting/how-to-install-and-use-mariadb-on-debian-12/
+
+Docker Documentation
+https://docs.docker.com/
+
+Docker Compose Documentation
+https://docs.docker.com/compose/
+
+Nginx Documentation
+https://nginx.org/en/docs/
+
+MariaDB Documentation
+https://mariadb.org/documentation/
+
+WordPress Documentation
+https://wordpress.org/documentation/
+
+
+### AI usage
+
+ChatGPT and Claude (Anthropic) were used during this project for explaining concepts and debugging.
 
 docker-compose
 on utilise build et pas image car sinon ca utilise les images officielle de Docker Hub
@@ -396,3 +559,6 @@ on doit avoir : LISTEN 0      80           0.0.0.0:3306       0.0.0.0:*
 pour voir si le service est accessible depuis wordpress : mariadb -h mariadb -u$MYSQL_USER -p$MYSQL_PASSWORD -e "SELECT 1"
 
 pour sortir de la : exit
+
+
+documentation

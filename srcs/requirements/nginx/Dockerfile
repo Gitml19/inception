@@ -1,4 +1,4 @@
-FROM debian:bullseye
+FROM debian:bookworm
 
 # nginx = serveur web qui va recevoir les requetes HTTP/HTTPS
 # openssl = sert a generer un certificat SSL
@@ -21,7 +21,7 @@ RUN openssl req -x509 -nodes \
 	-subj "/C=FR/ST=IDF/L=Paris/O=42/CN=${DOMAIN_NAME}" \
 	-days 365
 
-#copier la config nginx
+# remplace la config par defaut de nginx
 COPY conf/default.conf /etc/nginx/conf.d/default.conf
 
 COPY tools/init.sh /usr/local/bin/init.sh
