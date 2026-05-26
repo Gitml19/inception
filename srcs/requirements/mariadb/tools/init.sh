@@ -18,18 +18,17 @@ if [ ! -d /var/lib/mysql/mysql ]; then
     # creation du fichier sql
     cat > /tmp/init.sql <<EOF
 -- Crée la base WordPress
-CREATE DATABASE IF NOT EXISTS `${MYSQL_DATABASE}`;
+CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;
 
 -- Crée l'utilisateur WordPress
 -- % = connexion depuis n'importe quelle IP et comme wordpress vient d'un autre conteneur, c'est necessaire
-CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
+CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASSWORD}';
 
 -- donne acces a wordpress sur sa DB
-GRANT ALL PRIVILEGES ON `${MYSQL_DATABASE}`.* TO '${MYSQL_USER}'@'%';
+GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'%';
 
 -- Sécurise le root car sinon root peut ne pas avoir de mot de passe
-ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
-
+ALTER USER 'root'@'localhost' IDENTIFIED BY '${DB_ROOT_PASSWORD}';
 -- recharge les permissions MySQL
 FLUSH PRIVILEGES;
 EOF

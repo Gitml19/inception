@@ -12,7 +12,7 @@ up:
 # 	up: demarre les conteneurs
 # 	-d : mode detacher (background)
 # 	--build : rebuild les images avant demarrage
-	$(COMPOSE) up --build
+	$(COMPOSE) up -d --build
 
 # arrete et supprime les conteneurs, reseaux..., mais volumes et images persistent
 down:

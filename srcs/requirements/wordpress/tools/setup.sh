@@ -17,9 +17,9 @@ if [ ! -f "$WP_PATH/wp-config.php" ]; then
 
 # cree la config DB  
   wp config create --allow-root \
-    --dbname=$MYSQL_DATABASE \
-    --dbuser=$MYSQL_USER \
-    --dbpass=$MYSQL_PASSWORD \
+    --dbname=$DB_NAME \
+    --dbuser=$DB_USER \
+    --dbpass=$DB_PASSWORD \
     --dbhost="mariadb:3306" \
     --path=$WP_PATH
 fi

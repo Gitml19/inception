@@ -8,6 +8,12 @@ services:
     restart: on-failure
     networks:
       - inception
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -uroot -p$${DB_ROOT_PASSWORD} --silent"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   wordpress:
     build: ./requirements/wordpress
@@ -16,7 +22,8 @@ services:
     volumes:
       - wordpress:/var/www/wordpress
     depends_on:
-      - mariadb
+      mariadb:
+        condition: service_healthy
     restart: on-failure
     networks:
       - inception
@@ -31,7 +38,7 @@ services:
     volumes:
       - wordpress:/var/www/wordpress
     depends_on:
-      - mariadb
+      - wordpress
     restart: on-failure
     networks:
       - inception
