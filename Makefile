@@ -50,7 +50,7 @@ clean:
 # sudo rm -rf /home/$(shell whoami)/data = supprime les dossiers locaux
 fclean: clean
 	docker system prune -af
-	sudo rm -rf /home/$(shell whoami)/data
+	sudo rm -rf /home/$(shell whoami)/data/*
 
 re: fclean all
 
