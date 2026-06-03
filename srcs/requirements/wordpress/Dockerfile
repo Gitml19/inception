@@ -2,10 +2,8 @@ FROM debian:bookworm
 
 # php-fpm : server PHP fastcdgi car nginx ne sait pas executer du php directement, donc permet a php de parler avec mariadb/mysql
 # php-curl : permet a php de faire des requetes HTTP, telecharges des ressources
-# php-gd : gestion des images
 # php-mbstring : pour les caracteres speciaux
 # php8.2-mysql : connexion a mariadb
-# php8.2-json : manipulation json
 # php8.2-curl : requetes HTTP depuis PHP
 # curl ou wget : pour telecharger des fichiers
 # netcat : pour tester les connexions reseau
@@ -13,7 +11,6 @@ FROM debian:bookworm
 RUN apt-get update && apt-get install -y \
     php8.2-fpm \
     php8.2-mysql \
-    # php8.2-json \
     php8.2-curl \
     php8.2-mbstring \
     wget \
