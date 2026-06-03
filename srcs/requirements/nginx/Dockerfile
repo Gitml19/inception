@@ -7,7 +7,9 @@ RUN apt-get update && apt-get install -y \
 	nginx \
 	openssl \
 	&& rm -rf /var/lib/apt/lists/* \
+	&& sed -i '60d' /etc/nginx/nginx.conf \
 	&& rm -f /etc/nginx/sites-enables/default
+	# && rm -f /etc/nginx/sites-available/default
 
 # pour creer le dossier qui permet de stocker le certificat SSL et la clef pour une connexion securisee
 RUN mkdir -p /etc/nginx/ssl

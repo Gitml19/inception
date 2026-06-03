@@ -77,6 +77,7 @@ All three containers should show status `Up`. If one is restarting repeatedly, c
 
 Check that NGINX can be accessed by port 443 only (no other ports):
 ```bash
+docker exec -it nginx nginx -T | grep listen
 docker compose -f srcs/docker-compose.yml ps | grep 443
 ```
 The service is exposed only on port 443 on the host machine.
