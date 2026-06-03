@@ -79,6 +79,7 @@ Check that NGINX can be accessed by port 443 only (no other ports):
 ```bash
 docker compose -f srcs/docker-compose.yml ps | grep 443
 ```
+The service is exposed only on port 443 on the host machine.
 
 Check docker image name:
 ```bash

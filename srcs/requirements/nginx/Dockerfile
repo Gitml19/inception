@@ -2,10 +2,12 @@ FROM debian:bookworm
 
 # nginx = serveur web qui va recevoir les requetes HTTP/HTTPS
 # openssl = sert a generer un certificat SSL
+# rm -f /etc/nginx/sites-enables/default car sinon ca ecoute aussi sur le port 80 
 RUN apt-get update && apt-get install -y \
 	nginx \
 	openssl \
 	&& rm -rf /var/lib/apt/lists/*
+	&& rm -f /etc/nginx/sites-enables/default
 
 # pour creer le dossier qui permet de stocker le certificat SSL et la clef pour une connexion securisee
 RUN mkdir -p /etc/nginx/ssl

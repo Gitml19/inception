@@ -25,6 +25,7 @@ services:
     secrets:
       - wp_admin_password
       - wp_user_password
+      - db_password
     volumes:
       - wordpress:/var/www/wordpress
     depends_on:
