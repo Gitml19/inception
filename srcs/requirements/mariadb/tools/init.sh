@@ -3,6 +3,10 @@
 set -e
 # = si une commande echoue, le script s'arrete immediatement (pour pas que mariadb demarre dans un etat casser)
 
+# recupere les secrets
+DB_PASSWORD=$(cat /run/secrets/db_password)
+DB_ROOT_PASSWORD=$(cat /run/secrets/db_root_password)
+
 # cree le dossier socket si necessaire
 mkdir -p /run/mysqld
 # le process mariadb tourne avec l'utilisateur mysql
