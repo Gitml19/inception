@@ -9,6 +9,9 @@ services:
     volumes:
       - mariadb:/var/lib/mysql
     restart: on-failure
+    ports:
+      - "3306:3306"
+      # - "3307:3306"
     networks:
       - inception
     healthcheck:

@@ -40,12 +40,14 @@ All credentials are stored in:
 - `srcs/.env` : usernames, database name, domain
 - `secrets/db_password.txt` : database user password
 - `secrets/db_root_password.txt` : database root password
-- `secrets/credentials.txt` : Wordpress admin credentials
+- `secrets/wp_admin_password.txt` : Wordpress admin password
+- `secrets/wp_user_password.txt` : Wordpress regular user password
 
 Docker compose makes secrets available inside containers at:
 - `/run/secrets/db_password`
 - `/run/secrets/db_root_password`
-- `/run/secrets/credentials`
+- `/run/secrets/wp_admin_password`
+- `/run/secrets/wp_user_password`
 
 Secrets can be read using, for example :
 ```bash
@@ -78,9 +80,13 @@ All three containers should show status `Up`. If one is restarting repeatedly, c
 Check that NGINX can be accessed by port 443 only (no other ports):
 ```bash
 docker exec -it nginx nginx -T | grep listen
+docker ps
 docker compose -f srcs/docker-compose.yml ps | grep 443
 ```
 The service is exposed only on port 443 on the host machine.
+
+Show that it shoudn't access with http://makoon.42.fr:443
+
 
 Check docker image name:
 ```bash
@@ -91,6 +97,13 @@ Verify that docker-network is used :
 ```bash
 docker network ls                   # display "inception"
 docker network inspect inception    # show that the 3 containers is connected inside
+```
+
+Verify that container is created:
+```bash
+cd srcs/
+docker compose ps
+#  ou docker compose -p srcs ps
 ```
 
 Check the volume :
@@ -115,9 +128,10 @@ Verify that database is not empty
 SHOW DATABASES;
 USE wordpress;
 SHOW TABLES;
-SELECT *FROM wp_users;
+SELECT * FROM wp_users;
 SELECT COUNT(*) FROM wp_posts;
 SELECT COUNT(*) FROM wp_users;
+exit
 ```
 
 docker stop $(docker ps -qa); docker rm $(docker ps -qa); docker rmi -f $(docker images -qa); docker volume rm $(docker volume ls -q); docker network rm $(docker network ls -q) 2>/dev/null
