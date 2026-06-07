@@ -11,19 +11,37 @@ Three services are running:
 | WordPress | Application (php-fpm)             | 9000 (internal only) |
 | MariaDB   | Database                          | 3306 (internal only) |
 
+## System startup flow
+
+1. Docker creates the network
+2. MariaDB starts and initializes the database
+3. WordPress waits for MariaDB
+4. WordPress installs itself through WP-CLI
+5. PHP-FPM starts on port 9000
+6. Nginc starts on port 443
+7. HTTPS requests reach Nginx
+8. Nginx forwrds PHP requests to PHP-FPM
+9. WordPress queries MariaDB
 
 ## Start and stop the project
 
 ```bash
-make            # Start everything
-make down       # Stop without losing data
-make fclean     # Stop and remove all data
+make        # Start everything(build images and start all containers)
+make down   # Stop without losing data (stop and remove containers)
+make stop   # stop containers without removing them
+make start  # start stopped containers
+make restart    # restart all containers
+make status  # show running containers
+make logs   # follow container logs
+make clean  # remove containers and volumes
+make fclean # Stop and remove all data (full cleanup including persistent data)
+make re     #full rebuild
 ```
 
 ## Access the website
 
 - Website : `https://makoon.42.fr`
-- WordPress administration panel : `https:\\makoon.42.fr/wp-admin`
+- WordPress administration panel : `https://makoon.42.fr/wp-admin`
 
 The browser will show an SSL warning because the certificate is self-signed.
 Click 'Advanced...' then 'Accept the Risk and Continue' to continue.
@@ -66,7 +84,8 @@ DB_PASSWORD=$(cat /run/secrets/db_password) # instead of having for example DB_P
 ```bash
 make status             # See all running containers and their status
 docker compose -f srcs/docker-compose.yml ps        # Check which containers are up
-docker compose -f srcs/docker-compose.yml ps nginx  # Check if nginx is running
+docker ps | grep nginx  # Check if nginx is running
+docker compose -f srcs/docker-compose.yml ps nginx  # 2nd option to check if nginx is running
 docker compose -f srcs/docker-compose.yml ps wordpress
 docker compose -f srcs/docker-compose.yml ps mariadb
 make logs               # Follow live logs
@@ -74,7 +93,6 @@ make logs -f <service>  # Follow logs for one specific service i.e. make logs -f
 ```
 
 All three containers should show status `Up`. If one is restarting repeatedly, check its logs for errors.
-
 
 
 Check that NGINX can be accessed by port 443 only (no other ports):
@@ -85,8 +103,10 @@ docker compose -f srcs/docker-compose.yml ps | grep 443
 ```
 The service is exposed only on port 443 on the host machine.
 
-Show that it shoudn't access with http://makoon.42.fr:443
-
+Show that it shoudn't access with http://makoon.42.fr:443 or :
+```bash
+curl http://makoon.42.fr
+```
 
 Check docker image name:
 ```bash
@@ -134,13 +154,7 @@ SELECT COUNT(*) FROM wp_users;
 exit
 ```
 
+Command to clean evertyting :
+```bash
 docker stop $(docker ps -qa); docker rm $(docker ps -qa); docker rmi -f $(docker images -qa); docker volume rm $(docker volume ls -q); docker network rm $(docker network ls -q) 2>/dev/null
-
-
-
-
-
-
-how to change the port
-for nginx
-443 to 8443
+```

@@ -29,12 +29,12 @@ Each container has a specific role :
 - Wordpress executes WordPress PHP
 - MariaDB stores data.
 
+
 ## Design choices
 
 ### Virtual Machines vs Docker
 
 A VM virtualizes an entire operating system including its kernel (complete OS), requiring significant ressources. 
-
 Docker containers share the host kernel and isolate only the application layer, making them much lighter and faster to start.
 
 For this project, Docker allows us to run three isolated services on a single VM minimal overhead.
@@ -42,7 +42,6 @@ For this project, Docker allows us to run three isolated services on a single VM
 ### Secrets vs Environment Variables
 
 Environment variables (via `.env`) are suitable for non-sensitive configuration like domain names or usernames.
-
 Secrets (files in `secrets/`) are used for passwords and credentials (they are never written into a Dockerfile or committed to Git, reducing the exposure in case of a repository leak).
 
 In this project, secrets are used for passwords and environment variables are used for the rest.
@@ -56,13 +55,11 @@ A dedicated Docker network is used in this project to ensure secure and organize
 
 ### Docker Volumes vs Bind Mount
 
-Named volumes are managed by Docker and persist independently of the container lifecycle. The data suvives to `docker compose down`.
-
+Named volumes are managed by Docker and persist independently of the container lifecycle. The data survives to `docker compose down`.
 Bind mounts directly map a host path into a container, which is less portable and harder to manage because it depends to the host machine.
 
 This project uses named volumes with a local driver pointing to `/home/makoon/data` to satisfy both the persistence and the named volume requirements.
-
-Docker volumes are used in this project to persist Wordpress and MariaDB data.
+Docker volumes are used to persist Wordpress and MariaDB data.
 
 ### NGINX : Web server
 
@@ -74,20 +71,20 @@ In Dockerfile :
 - copy of nginx.conf
 
 The .conf file :
-- indicates on which port and in wich mode the server listens for connections : server listens on port 443 and on mode SSL/TLS (HTTPS)
+- indicates on which port and in which mode the server listens for connections : server listens on port 443 and on mode SSL/TLS (HTTPS)
 ```bash
 server {
 	listen 443 ssl;       # for IPv4
 	listen [::]:443 ssl;  # for IPv6
 }
 ```
-- precises that this server must respond to a specific domain name
+- specifies that this server must respond to a specific domain name
 ```bash
 server {
   server_name makoon.42.fr;
 }
 ```
-- definies the server's public SSL certificate and the private key associated with the certificate, and also precises which versions of HTTPS protocol are allowed
+- definies the server's public SSL certificate and the private key associated with the certificate, and also specifies which versions of HTTPS protocol are allowed
 ```bash
 server {
 	ssl_certificate /etc/nginx/ssl/nginx.crt;
@@ -148,14 +145,14 @@ even if MariaDB is well started.
 
 ### WordPress : PHP-FPM
 
-The role of WordPress is to generate a dynamique website.
+The role of WordPress is to generate a dynamic website.
 
 In Dockerfile :
 - install php8.2-fpm (PHP FastCGI server because Nginx cannot execute PHP directly, so it allows PHP to communicate with MariaDB/MySQL and 8.2 version for the compatibility with debian:bookworm)
 - install various extensions : php8.2-mysql (connexion to mariadb), php8.2-curl (HTTP request from PHP), php8.2-mbstring (for special characters)
 - install wget or curl (to download WordPress)
 - install tar (to decompress the file)
-- copy php www.conf (php-fpm listens on the Docker network; therefore, PHP listens on 0.0.0.0:9000 instead of 127.0.0.1:9000 because nginx is in a different container)
+- copy php www.conf (php-fpm listens on the Docker network; therefore, PHP-FPM listens on 0.0.0.0:9000 instead of 127.0.0.1:9000 because nginx is in a different container)
 - copy the script setup.sh (the script allows to download WordPress, configure wp-config.php, connect MariaDB, and launch php-fpm)
 - install wp-cli (used to automatically install WordPress, create an admin area, and configure the site without a browser)
 
@@ -193,7 +190,28 @@ Each Docker image have the same name as its corresponding service. Each service 
 
 ### Environment variables
 
-Create a `.env` file at the root of the project:
+Create a `/secrets` folder at the root of the project with 4 files :
+- `db_password.txt` : contains MariaDB password
+- `db_root_password.txt` : contains root password
+- `wp_admin_password.txt` : contains password of wordpress admin
+- `wp_user_password.txt` : contains password of the regular user.
+
+```bash
+mkdir secret
+cd secret/
+echo "wppassword" > db_password.txt
+echo "rootpassword" > db_root_password.txt
+echo "makoonpass" > wp_admin_password.txt
+echo "userpassword" > wp_user_password.txt
+```
+
+Create a `.env` file in folder `srcs/`:
+```bash
+cd srcs/
+touch .env
+```
+
+Example of `.env`: 
 ```env
 DOMAIN_NAME=makoon.42.fr
 
@@ -214,6 +232,7 @@ Add domain to `/etc/hosts`:
 ```bash
 sudo sh -c 'echo "127.0.0.1 makoon.42.fr" >> /etc/hosts'
 ```
+
 
 ### Build and run
 
@@ -247,128 +266,24 @@ Once all containers are running:
 - Nginx listens on port 443 (HTTPS only)
 
 
-### Various available commands
-
-```bash
-docker ps -a
-docker image ls
-docker rm <id_container>
-docker image rm <id_image>
-docker rmi <id_image>
-docker run -it <image_name>
-exit
-docker stop <id_conteneur>
-docker start <id_conteneur>
-docker --help
-```
-
-Command for volume :
-```bash
-docker volume ls
-docker volume rm <volume_name>
-docker volume inspect <volume_name>
-```
-
-
-
-
-<!-- ### Stop the infrastructure
-
-```bash
-docker-compose down
-```
-To remove volumes :
-
-```bash
-docker-compose down -v
-``` -->
-
 ## Ressources
 
 Stable version of Debian : https://www.debian.org/releases/index.fr.html
 Tuto : https://tuto.grademe.fr/inception/
 https://www.atlantic.net/dedicated-server-hosting/how-to-install-and-use-mariadb-on-debian-12/
 
-Docker Documentation
-https://docs.docker.com/
+Docker Compose documentation : https://docs.docker.com/compose/
 
-Docker Compose Documentation
-https://docs.docker.com/compose/
+Nginx documentation : https://nginx.org/en/docs/
 
-Nginx Documentation
-https://nginx.org/en/docs/
-
-MariaDB Documentation
-https://mariadb.org/documentation/
+MariaDB Documentation : https://mariadb.org/documentation/
 
 MariaDB healthcheck: https://mariadb.org/mariadb-server-docker-official-images-healthcheck-without-mysqladmin/
 https://mariadb.com/docs/server/server-management/automated-mariadb-deployment-and-administration/docker-and-mariadb/using-healthcheck-sh
 
-WordPress Documentation
-https://wordpress.org/documentation/
+WordPress Documentation : https://wordpress.org/documentation/
 
 
 ### AI usage
 
 ChatGPT and Claude (Anthropic) were used during this project for explaining concepts and debugging.
-
-
-
-
-Étape 2 — WordPress + PHP-FPM
-
-Objectif :
-
-php-fpm tourne
-WordPress est installé
-WordPress se connecte à MariaDB
-
-IMPORTANT :
-à ce stade nginx n’est pas nécessaire.
-
-Tu peux tester avec :
-
-docker exec -it wordpress bash
-
-Puis :
-
-php-fpm7.4 -F
-
-ou selon la version.
-
-Le point critique ici :
-le fichier wp-config.php.
-
-Il doit contenir :
-
-define( 'DB_NAME', 'wordpress' );
-define( 'DB_USER', 'wpuser' );
-define( 'DB_PASSWORD', 'wppassword' );
-define( 'DB_HOST', 'mariadb:3306' );
-Étape 3 — NGINX
-
-
-
-
-
-pour entrer dans un container. Par ex celui de mariadb : docker exec -it mariadb bash
-pour trouver le fichier utiliser pour source de config : mysql --help | grep -A 1 "Default options"
-ca me donne comme info par ex : 
-Default options are read from the following files in the given order:
-/etc/my.cnf /etc/mysql/my.cnf ~/.my.cnf 
-donc ca veut dire que MariaDB lit uniquement ces fichiers :
-/etc/my.cnf
-/etc/mysql/my.cnf
-~/.my.cnf
-
-quand je fais : grep -R "bind-address" /etc/mysql /etc/my.cnf 2>/dev/null
-si ca me donne : /etc/mysql/mariadb.conf.d/50-server.cnf:bind-address            = 127.0.0.1
-ca veut dire qu'il lit encore bind-address sur localhost alors que nous on voulait 0.0.0.0
-
-pour voir si mariadb ecoute vraiment sur le reseau : ss -lntp | grep 3306
-on doit avoir : LISTEN 0      80           0.0.0.0:3306       0.0.0.0:*  
-
-pour voir si le service est accessible depuis wordpress : mariadb -h mariadb -u$MYSQL_USER -p$MYSQL_PASSWORD -e "SELECT 1"
-
-pour sortir de la : exit
-
